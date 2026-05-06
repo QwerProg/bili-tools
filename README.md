@@ -4,11 +4,22 @@ B站直播开播工具，命令行一键开播/下播。
 
 ## 安装
 
-### 预编译
+### Arch Linux (AUR)
 
-从 [Release](https://github.com/QwerProg/bili-tools/releases) 下载对应平台二进制。
+```bash
+yay -S bili-tools-git
+```
 
-### 自行编译
+### macOS (Homebrew)
+
+```bash
+brew tap QwerProg/bili-tools
+brew install bt
+```
+
+> Homebrew 会从源码编译，首次需要 Rust 工具链，`brew` 会自动安装。
+
+### Cargo
 
 ```bash
 git clone https://github.com/QwerProg/bili-tools.git --depth=1
@@ -16,7 +27,7 @@ cd bili-tools
 cargo install --path .
 ```
 
-编译安装到 `~/.cargo/bin/bt`，确认该目录在 PATH 中即可直接使用。
+编译安装到 `~/.cargo/bin/bt`，确认该目录在 PATH 中即可。
 
 ## 使用
 
@@ -86,7 +97,6 @@ Options:
 ℹ️ 新增粉丝 : 3
 ℹ️ 弹幕数 : 42
 ℹ️ 直播时长 : 7200
-...
 
 # 查看状态 — 显示 B 站电视机 Logo
 bt --status
