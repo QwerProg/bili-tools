@@ -191,8 +191,8 @@ jobs:
           mkdir -p artifacts
           
           # Get binary name: prefer [[bin]] name over package name
-          BINARY_NAME=$(sed -n '/^\[\[bin\]\]/,/^\[/{ /^name = /{ s/name = "\(.*\)"/\1/p; q; } }' Cargo.toml)
-          [ -z "$BINARY_NAME" ] && BINARY_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          BINARY_NAME=$(grep -A1 '^\[\[bin\]\]' Cargo.toml | grep '^name' | cut -d'"' -f2)
+          [ -z "$BINARY_NAME" ] && BINARY_NAME=$(grep '^name' Cargo.toml | head -1 | cut -d'"' -f2)
           
           # Source and destination paths
           SOURCE_PATH="target/${{ matrix.target }}/release/${BINARY_NAME}"
