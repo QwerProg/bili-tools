@@ -158,8 +158,13 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifacts
           
-          # Get binary name from Cargo.toml
-          $binaryName = (Select-String -Path "Cargo.toml" -Pattern '^name = "(.+)"').Matches[0].Groups[1].Value
+          # Get binary name: prefer [[bin]] name over package name
+          $content = Get-Content "Cargo.toml" -Raw
+          if ($content -match '\[\[bin\]\]\r?\n\s*name\s*=\s*"([^"]+)"') {
+            $binaryName = $matches[1]
+          } elseif ($content -match '^name\s*=\s*"([^"]+)"') {
+            $binaryName = $matches[1]
+          }
           
           # Source and destination paths
           $sourcePath = "target\${{ matrix.target }}\release\${binaryName}.exe"
@@ -185,8 +190,9 @@ jobs:
         run: |
           mkdir -p artifacts
           
-          # Find the binary name from Cargo.toml
-          BINARY_NAME=$(grep '^name = ' Cargo.toml | head -1 | sed 's/name = "\(.*\)"/\1/')
+          # Get binary name: prefer [[bin]] name over package name
+          BINARY_NAME=$(sed -n '/^\[\[bin\]\]/,/^\[/{ /^name = /{ s/name = "\(.*\)"/\1/p; q; } }' Cargo.toml)
+          [ -z "$BINARY_NAME" ] && BINARY_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -1)
           
           # Source and destination paths
           SOURCE_PATH="target/${{ matrix.target }}/release/${BINARY_NAME}"
