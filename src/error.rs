@@ -1,37 +1,48 @@
-# 全局错误处理
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum BiliError {
-    #[error("API请求失败: {0}")]
-    ApiError(String),
-    
-    #[error("无效的凭证: {0}")]
-    InvalidCookies(String),
-    
-    #[error("二维码已过期，请重新获取")]
-    QrExpired,
-    
-    #[error("等待扫描二维码...")]
-    QrNotScanned,
-    
-    #[error("网络连接错误: {0}")]
-    NetworkError(#[from] reqwest::Error),
-    
-    #[error("JSON数据解析错误: {0}")]
-    JsonError(#[from] serde_json::Error),
-    
-    #[error("本地文件读写错误: {0}")]
-    IoError(#[from] std::io::Error),
-    
-    #[error("配置文件异常: {0}")]
-    ConfigError(String),
-    
-    #[error("找不到对应的直播间信息")]
-    RoomNotFound,
-    
-    #[error("操作受限：该账号需要进行人脸识别验证")]
-    FaceIdentificationRequired,
+pub enum BiliLiveError {
+    #[error("网络请求失败: {0}")]
+    Network(#[from] minreq::Error),
+
+    #[error("JSON解析失败: {0}")]
+    Json(#[from] serde_json::Error),
+
+    #[error("文件操作失败: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("数字解析失败: {0}")]
+    ParseInt(#[from] std::num::ParseIntError),
+
+    #[error("二维码生成失败: {0}")]
+    QrCode(#[from] qrcode::types::QrError),
+
+    #[error("图像处理失败: {0}")]
+    Image(#[from] image::ImageError),
+
+    #[error("Cookie文件不存在或无效")]
+    _CookieError,
+
+    #[error("登录状态异常: {0}")]
+    _LoginError(String),
+
+    #[error("登录状态检查失败: {0}")]
+    _LoginStatusError(String),
+
+    #[error("API返回错误: {0}")]
+    Api(String),
+
+    #[error("分区选择失败: {0}")]
+    _AreaSelectionError(String),
+
+    #[error("用户输入错误: {0}")]
+    Input(String),
+
+    #[error("直播操作失败: {0}")]
+    _LiveError(String),
+
+    #[error("数据解析失败: {0}")]
+    Parse(String),
 }
 
-pub type Result<T> = std::result::Result<T, BiliError>;
+pub type Result<T> = std::result::Result<T, BiliLiveError>;

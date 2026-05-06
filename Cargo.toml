@@ -1,22 +1,36 @@
 [package]
-name = "bili-tools"
+name = "bili_live"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "bt"
+path = "src/main.rs"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
+panic = "abort"
+strip = "symbols"
+
 [dependencies]
-# 用于异步时和网络请求
-tokio = { vserion = "1.0", features = ["full"] }
-reqwest = { vserion = "0.11", features = ["json", "cookies"] }
 
-# 序列化和反序列化
-serde = { version = "1.0", features = ["derives"] }
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+qrcode = "0.14.1"
+# reqwest = { version = "0.12.15", features = [
+#     "blocking",
+#     "json",
+# ] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = { version = "1.0.149", default-features = false, features = [
+    "alloc",
+] }
+minreq = { version = "2.14.1", default-features = false, features = ["https-rustls"] }
+thiserror = { version = "2.0.18", default-features = false }
+log = { version = "0.4.29", default-features = false }
+env_logger = { version = "0.11.10", default-features = false }
+chrono = { version = "0.4.44", features = ["serde"] }
 
-# 错误处理
-thiserror = "1.0"
-
-# 命令行解析
-clap = { version = "4.0", features = ["derives"] }
-
-# 二维码和加密工具
-qrcode = "0.12"
-md5 = "0.7"
+clap = { version = "4.6.0", features = ["derive"] }
+crossterm = "0.28"
