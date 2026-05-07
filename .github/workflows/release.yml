@@ -22,6 +22,10 @@ jobs:
       - name: Build
         run: cargo build --target x86_64-pc-windows-msvc --release --locked
 
+      - name: Validate winget manifest
+        shell: pwsh
+        run: winget validate pkg/winget/QwerProg.bt.installer.yaml
+
       - name: Package
         shell: pwsh
         run: |
@@ -30,6 +34,8 @@ jobs:
           Compress-Archive -Path $exe -DestinationPath $zip
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
           "$hash  $zip" | Out-File -Encoding ascii SHA256SUMS
+          $manifest = "pkg/winget/QwerProg.bt.installer.yaml"
+          (Get-Content $manifest) -replace 'InstallerSha256: .+', "InstallerSha256: $hash" | Set-Content $manifest
 
       - name: Release
         uses: softprops/action-gh-release@v2
