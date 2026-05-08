@@ -7,6 +7,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 jobs:
   build:
@@ -37,7 +38,22 @@ jobs:
           $manifest = "pkg/winget/QwerProg.bt.installer.yaml"
           (Get-Content $manifest) -replace 'InstallerSha256: .+', "InstallerSha256: $hash" | Set-Content $manifest
 
+      - name: Test winget install
+        shell: pwsh
+        run: |
+          $zip = (Resolve-Path "bt-x86_64-windows.zip").Path -replace '\\', '/'
+          $manifest = "pkg/winget/QwerProg.bt.installer.yaml"
+          (Get-Content $manifest) -replace 'InstallerUrl: .+', "InstallerUrl: file:///$zip" |
+            Set-Content test-manifest.yaml
+          winget install --manifest test-manifest.yaml `
+            --accept-package-agreements --disable-interactivity --silent
+          if (-not (Get-Command bt.exe -ErrorAction SilentlyContinue)) {
+            throw "bt.exe not found after install"
+          }
+          Write-Host "winget install test passed"
+
       - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
