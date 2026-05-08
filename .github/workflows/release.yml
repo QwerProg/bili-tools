@@ -13,6 +13,9 @@ jobs:
   build:
     name: Build Windows
     runs-on: windows-latest
+    outputs:
+      sha256: ${{ steps.package.outputs.sha256 }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +31,7 @@ jobs:
         run: winget validate pkg/winget/QwerProg.bt.installer.yaml
 
       - name: Package
+        id: package
         shell: pwsh
         run: |
           $exe = "target/x86_64-pc-windows-msvc/release/bt.exe"
@@ -35,8 +39,14 @@ jobs:
           Compress-Archive -Path $exe -DestinationPath $zip
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
           "$hash  $zip" | Out-File -Encoding ascii SHA256SUMS
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
           $manifest = "pkg/winget/QwerProg.bt.installer.yaml"
           (Get-Content $manifest) -replace 'InstallerSha256: .+', "InstallerSha256: $hash" | Set-Content $manifest
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Test winget install
         shell: pwsh
@@ -61,3 +71,78 @@ jobs:
             SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  submit-winget:
+    name: Submit to winget-pkgs
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate manifests
+        run: |
+          VERSION="${{ needs.build.outputs.version }}"
+          SHA256="${{ needs.build.outputs.sha256 }}"
+          M="pkg/winget-pkgs/manifests/q/QwerProg/bt/${VERSION}"
+
+          mkdir -p "$M"
+          cat > "$M/QwerProg.bt.yaml" << EOF
+          PackageIdentifier: QwerProg.bt
+          PackageVersion: ${VERSION}
+          DefaultLocale: en-US
+          ManifestType: version
+          ManifestVersion: 1.9.0
+          EOF
+
+          cat > "$M/QwerProg.bt.installer.yaml" << EOF
+          PackageIdentifier: QwerProg.bt
+          PackageVersion: ${VERSION}
+          InstallerLocale: en-US
+          InstallerType: zip
+          NestedInstallerType: portable
+          NestedInstallerFiles:
+            - RelativeFilePath: bt.exe
+          Installers:
+            - Architecture: x64
+              InstallerUrl: https://github.com/QwerProg/bili-tools/releases/download/v${VERSION}/bt-x86_64-windows.zip
+              InstallerSha256: ${SHA256}
+          ManifestType: installer
+          ManifestVersion: 1.9.0
+          EOF
+
+          cat > "$M/QwerProg.bt.locale.en-US.yaml" << EOF
+          PackageIdentifier: QwerProg.bt
+          PackageVersion: ${VERSION}
+          PackageLocale: en-US
+          Publisher: QwerProg
+          PackageName: bt
+          License: MIT
+          ShortDescription: Bilibili live streaming CLI tool - one-command start/stop stream
+          Homepage: https://github.com/QwerProg/bili-tools
+          Tags:
+            - bilibili
+            - live
+            - stream
+            - cli
+          ManifestType: defaultLocale
+          ManifestVersion: 1.9.0
+          EOF
+
+      - name: Submit PR to winget-pkgs
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git clone --depth=1 https://github.com/QwerProg/winget-pkgs.git winget-pkgs-repo
+          cp -r pkg/winget-pkgs/manifests/* winget-pkgs-repo/manifests/
+          cd winget-pkgs-repo
+          git add manifests/
+          git commit -m "Add QwerProg.bt ${{ needs.build.outputs.version }}"
+          git push origin HEAD:refs/heads/qwerprog-bt-${{ needs.build.outputs.version }}
+          gh pr create \
+            --repo microsoft/winget-pkgs \
+            --head QwerProg:qwerprog-bt-${{ needs.build.outputs.version }} \
+            --title "Add QwerProg.bt ${{ needs.build.outputs.version }}" \
+            --body "Automated submission from [bili-tools](https://github.com/QwerProg/bili-tools) release."
