@@ -1,5 +1,6 @@
 PackageIdentifier: QwerProg.bt
 PackageVersion: 0.1.0
+PackageLocale: en-US
 PackageName: bt
 Publisher: QwerProg
 License: MIT
