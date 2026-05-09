@@ -52,6 +52,22 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          body: |
+            ## 安装
+
+            ### Scoop
+            ```
+            scoop bucket add QwerProg https://github.com/QwerProg/bili-tools
+            scoop install bt
+            ```
+
+            ### Winget
+            ```
+            winget install QwerProg.bt
+            ```
+
+            ### 手动下载
+            下载 `bt-x86_64-windows.zip`，解压后即可运行。
           files: |
             bt-x86_64-windows.zip
             SHA256SUMS
