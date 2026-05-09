@@ -79,14 +79,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
-          git clone --depth=1 https://github.com/QwerProg/winget-pkgs.git winget-pkgs-repo
+          git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/QwerProg/winget-pkgs.git" winget-pkgs-repo
           cp -r pkg/winget-pkgs/manifests/* winget-pkgs-repo/manifests/
           cd winget-pkgs-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add manifests/
           git commit -m "Add QwerProg.bt ${{ needs.build.outputs.version }}"
-          git push origin HEAD:refs/heads/qwerprog-bt-${{ needs.build.outputs.version }}
+          git push origin "HEAD:refs/heads/qwerprog-bt-${{ needs.build.outputs.version }}"
           gh pr create \
             --repo microsoft/winget-pkgs \
             --head QwerProg:qwerprog-bt-${{ needs.build.outputs.version }} \
