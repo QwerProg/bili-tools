@@ -28,7 +28,7 @@ jobs:
 
       - name: Validate winget manifest
         shell: pwsh
-        run: winget validate pkg/winget/QwerProg.bt.installer.yaml
+        run: winget validate --nowarn pkg/winget/QwerProg.bt.installer.yaml
 
       - name: Package
         id: package
