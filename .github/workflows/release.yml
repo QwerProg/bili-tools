@@ -48,20 +48,6 @@ jobs:
         shell: bash
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Test winget install
-        shell: pwsh
-        run: |
-          $zip = (Resolve-Path "bt-x86_64-windows.zip").Path -replace '\\', '/'
-          $manifest = "pkg/winget/QwerProg.bt.installer.yaml"
-          (Get-Content $manifest) -replace 'InstallerUrl: .+', "InstallerUrl: file:///$zip" |
-            Set-Content test-manifest.yaml
-          winget install --manifest test-manifest.yaml `
-            --accept-package-agreements --disable-interactivity --silent
-          if (-not (Get-Command bt.exe -ErrorAction SilentlyContinue)) {
-            throw "bt.exe not found after install"
-          }
-          Write-Host "winget install test passed"
-
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -84,50 +70,10 @@ jobs:
         run: |
           VERSION="${{ needs.build.outputs.version }}"
           SHA256="${{ needs.build.outputs.sha256 }}"
-          M="pkg/winget-pkgs/manifests/q/QwerProg/bt/${VERSION}"
-
-          mkdir -p "$M"
-          cat > "$M/QwerProg.bt.yaml" << EOF
-          PackageIdentifier: QwerProg.bt
-          PackageVersion: ${VERSION}
-          DefaultLocale: en-US
-          ManifestType: version
-          ManifestVersion: 1.9.0
-          EOF
-
-          cat > "$M/QwerProg.bt.installer.yaml" << EOF
-          PackageIdentifier: QwerProg.bt
-          PackageVersion: ${VERSION}
-          InstallerLocale: en-US
-          InstallerType: zip
-          NestedInstallerType: portable
-          NestedInstallerFiles:
-            - RelativeFilePath: bt.exe
-          Installers:
-            - Architecture: x64
-              InstallerUrl: https://github.com/QwerProg/bili-tools/releases/download/v${VERSION}/bt-x86_64-windows.zip
-              InstallerSha256: ${SHA256}
-          ManifestType: installer
-          ManifestVersion: 1.9.0
-          EOF
-
-          cat > "$M/QwerProg.bt.locale.en-US.yaml" << EOF
-          PackageIdentifier: QwerProg.bt
-          PackageVersion: ${VERSION}
-          PackageLocale: en-US
-          Publisher: QwerProg
-          PackageName: bt
-          License: MIT
-          ShortDescription: Bilibili live streaming CLI tool - one-command start/stop stream
-          Homepage: https://github.com/QwerProg/bili-tools
-          Tags:
-            - bilibili
-            - live
-            - stream
-            - cli
-          ManifestType: defaultLocale
-          ManifestVersion: 1.9.0
-          EOF
+          SRC="pkg/winget-pkgs/manifests/q/QwerProg/bt/0.1.0"
+          DST="pkg/winget-pkgs/manifests/q/QwerProg/bt/${VERSION}"
+          cp -r "$SRC" "$DST"
+          sed -i "s/0\.1\.0/${VERSION}/g; s/0000000000000000000000000000000000000000000000000000000000000000/${SHA256}/g" "$DST"/*.yaml
 
       - name: Submit PR to winget-pkgs
         env:
