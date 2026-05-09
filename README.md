@@ -10,6 +10,22 @@ B站直播开播工具，命令行一键开播/下播。
 yay -S bili-tools-git
 ```
 
+### Windows
+
+#### Winget
+```bash
+winget install QwerProg.bt
+```
+
+#### Scoop
+```bash
+scoop bucket add QwerProg https://github.com/QwerProg/bili-tools
+scoop install bt
+```
+
+#### 手动下载
+从 [Releases](https://github.com/QwerProg/bili-tools/releases) 下载 `bt-x86_64-windows.zip`，解压后即可运行。
+
 ### macOS (Homebrew)
 
 ```bash
