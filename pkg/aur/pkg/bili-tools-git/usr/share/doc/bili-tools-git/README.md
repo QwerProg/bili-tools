@@ -1,4 +1,4 @@
-# bili-tools
+# bt
 
 B站直播开播工具，命令行一键开播/下播。
 
@@ -25,16 +25,13 @@ brew tap QwerProg/bili-tools
 brew install bt
 ```
 
-### Arch Linux (AUR)
+> Homebrew 会从源码编译，首次需要 Rust 工具链，`brew` 会自动安装。
+
+### Linux (AUR)
 
 ```bash
-# 使用 yay
-yay -S bili-tools-bin   # 稳定版 (推荐，直接下载预编译二进制)
-yay -S bili-tools-git   # 最新 git 版 (从源码编译)
-
-# 或使用 paru
-paru -S bili-tools-bin  # 稳定版 (推荐，直接下载预编译二进制)
-paru -S bili-tools-git  # 最新 git 版 (从源码编译)
+yay -S bili-tools       # 稳定版
+yay -S bili-tools-git   # 最新 git 版
 ```
 
 ### Windows
@@ -176,7 +173,7 @@ graph TD
     main --> ui
 
     auth --> cookies
-    auth --> login
+    auth --> qr_login
     auth --> session
 
     api --> passport
@@ -198,46 +195,46 @@ graph TD
 
 ```
 src/
-├── main.rs               # 入口与命令分发
+├── main.rs            # 入口与命令分发
 ├── api/
-│   ├── client.rs         # 公共 User-Agent 常量
-│   ├── passport.rs       # 二维码生成/轮询、room_id 查询
-│   ├── live.rs           # 直播状态查询、分区查询、标题更新
-│   └── area.rs           # 拉取全量分区列表
+│   ├── client.rs      # 公共 User-Agent 常量
+│   ├── passport.rs    # 二维码生成/轮询、room_id 查询
+│   ├── live.rs        # 直播状态查询、分区查询、标题更新
+│   └── area.rs        # 拉取全量分区列表
 ├── auth/
-│   ├── login.rs          # 登录流程（含账号密码/短信/扫码/浏览器）
-│   ├── cookies.rs        # cookies.json 读写管理
-│   └── session.rs        # 登录状态验证
+│   ├── qr_login.rs    # 扫码登录流程
+│   ├── cookies.rs     # cookies.json 读写管理
+│   └── session.rs     # 登录状态验证
 ├── live/
-│   ├── manager.rs        # 开播/下播（调用 B站 API，写 stream_info.txt）
-│   └── stats.rs          # 下播后拉取直播统计数据
+│   ├── manager.rs     # 开播/下播（调用 B站 API，写 stream_info.txt）
+│   └── stats.rs       # 下播后拉取直播统计数据
 ├── ui/
 │   ├── area_selector.rs  # dialoguer 两级分区选择器
 │   └── prompts.rs        # 输出宏
 └── utils/
-    ├── qrcode.rs         # 终端 ASCII 二维码 + PNG 保存
-    └── string.rs         # 推流码打码
+    ├── qrcode.rs      # 终端 ASCII 二维码 + PNG 保存
+    └── string.rs      # 推流码打码
 ```
 
 ### 模块说明
 
-| 模块路径 | 主要职责与核心逻辑 |
-| :--- | :--- |
-| **`main.rs`** | 解析 `clap` 命令行参数并进行子命令路由分发（`start` / `stop` / `status` / `completions` 等）；`start` 支持 `--relogin` 与 `-y` 自动确认；`stop` 支持 `-d` 倒计时下播并自动隐藏终端光标。 |
-| **`auth/`** | 统一管理认证流程。`login.rs` 提供扫码、账号密码、短信及浏览器等多模式登录；`cookies.rs` 负责保存与读写 `cookies.json`（含 `room_id`、`sessdata`、`csrf_token`、`live_key`）；`session.rs` 处理凭证有效性检查。 |
-| **`api/`** | 封装对 B 站官方接口的原始 HTTP 请求。基于 `minreq` 同步 HTTP 库与 Edge 130 伪装 User-Agent，实现凭证获取、房间信息查询、推流开启/关闭及分区数据同步。 |
-| **`live/`** | 直播全生命周期管理。`manager.rs` 处理开播推流码获取、写入 `stream_info.txt` 以及下播操作；`stats.rs` 在下播后调用 `StopLiveData` 统计接口，格式化输出时长、弹幕、粉丝增量等数据。 |
-| **`ui/`** | 命令行交互界面组件。`area_selector.rs` 采用 `dialoguer::Select` 实现优雅的两级分区选择器；`prompts.rs` 提供统一的控制台彩色输出辅助宏。 |
-| **`utils/`** | 通用工具库。`qrcode.rs` 负责终端 ASCII 二维码渲染与本地 PNG 图片生成；`string.rs` 提供敏感推流码脱敏显示；`paths.rs` 管理跨平台数据存放路径（`~/.config/bt/` 或 `%APPDATA%/bt/`）。 |
+**`main.rs`** — 解析 `clap` 子命令并分发：`start` / `stop` / `status` / `help` / `version`。`start` 支持 `--relogin` 与 `-y` 自动确认；`stop` 支持 `--delay` 倒计时下播。
+
+**`auth/`** — `qr_login.rs` 调用 TV 登录 API 生成二维码并轮询，成功后提取 `SESSDATA` 与 `bili_jct` 保存到 `cookies.json`。同时支持账号密码 / 短信登录（可能触发风控）。`cookies.rs` 负责读写该文件，字段包括 `room_id`、`sessdata`、`csrf_token`、`live_key`。
+
+**`api/`** — 所有对 B 站接口的原始请求，每个函数只做单一职责：发请求、解析 JSON、返回数据或错误。HTTP 层统一使用 `minreq`（同步），伪装成 Edge 130 浏览器 UA。
+
+**`live/`** — `manager.rs` 负责开播（POST `startLive`，解析 RTMP 地址与推流码，写入 `stream_info.txt`，更新 `live_key`）和下播（POST `stopLive`）。`stats.rs` 在下播后调用 `StopLiveData` API 展示新增粉丝、弹幕数、在线峰值等统计。
+
+**`ui/area_selector.rs`** — 使用 `dialoguer::Select` 实现两级分区选择器，和登录菜单风格一致。
 
 ## 构建与发布
 
-CI 由 GitHub Actions 驱动，推送 `v*` tag 时自动执行多平台交叉编译与发布：
+CI 由 GitHub Actions 驱动，推送 `v*` tag 时自动执行：
 
-1. **Windows** (`windows-latest`)：构建 `x86_64` (x64) 与 `aarch64` (ARM64) 二进制，并分别打包为 `bt-x86_64-windows.zip` 和 `bt-arm64-windows.zip`。
-2. **macOS** (`macos-latest`)：构建 `x86_64` (Intel) 与 `aarch64` (Apple Silicon) 二进制，分别打包为 `bt-x86_64-macos.zip` 和 `bt-arm64-macos.zip`。
-3. **Linux** (`ubuntu-latest`)：构建 `x86_64` 与 `aarch64` 二进制，分别打包为 `bt-x86_64-linux.tar.gz` 和 `bt-arm64-linux.tar.gz`。
-4. **Winget 自动提交**：自动计算 `x86_64` Windows 构建包的 SHA256 哈希值，生成清单并自动向微软官方的 `microsoft/winget-pkgs` 提交 PR。
+1. 在 `windows-latest` 编译 `x86_64-pc-windows-msvc` 可执行文件
+2. 打包为 `bt-x86_64-windows.zip`，计算 SHA256，发布 GitHub Release
+3. 自动向 `microsoft/winget-pkgs` 提交 PR 更新 winget 清单
 
 Release 构建参数已做极限体积优化，并静态链接 MSVC 运行时，**无需额外安装 VC++ Redistributable**：
 
